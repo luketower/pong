@@ -160,15 +160,29 @@ int main(int argc, char *argv[])
 
         memset(screen_pixels, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(u32));
 
-        if (pressed == PRESSED_LEFT && (paddle.x != 0))
+        if (pressed == PRESSED_LEFT && (paddle.x > 0))
         {
-            paddle.x -= PADDLE_MOVE;
+            if (paddle.x < PADDLE_MOVE)
+            {
+                paddle.x = 0;
+            }
+            else
+            {
+                paddle.x -= PADDLE_MOVE;
+            }
         }
 
         if ((pressed == PRESSED_RIGHT) &&
-            ((paddle.x + paddle.w) != SCREEN_WIDTH))
+            ((paddle.x + paddle.w) < SCREEN_WIDTH))
         {
-            paddle.x += PADDLE_MOVE;
+            if ((SCREEN_WIDTH - (paddle.x + paddle.w)) < PADDLE_MOVE)
+            {
+                paddle.x += SCREEN_WIDTH - paddle.x;
+            }
+            else
+            {
+                paddle.x += PADDLE_MOVE;
+            }
         }
 
         calculate_direction(&direction, paddle, ball);
