@@ -14,14 +14,9 @@ typedef Uint32 u32;
 
 typedef enum {
     PRESSED_UNDEFINED,
-    PRESSED_LEFT,
-    PRESSED_RIGHT
+    PRESSED_UP,
+    PRESSED_DOWN
 } pressed_t;
-
-typedef struct {
-    int x;
-    int y;
-} ball_direction_t;
 
 typedef struct {
     int x;
@@ -36,16 +31,10 @@ typedef struct {
 
 typedef struct {
     pos_t pos;
-    int w;
-    int h;
+    float xv;
+    float yv;
+    int radius;
 } ball_t;
-
-BOOL paddle_hits_ball(paddle_t paddle, ball_t ball)
-{
-    return ((ball.pos.y >= (SCREEN_HEIGHT-paddle.h-ball.h)) &&
-            (ball.pos.x > paddle.pos.x) &&
-            (ball.pos.x < (paddle.pos.x + paddle.w)));
-}
 
 int ball_angle(paddle_t paddle, ball_t ball) {
     int x = 0;
@@ -60,44 +49,93 @@ int ball_angle(paddle_t paddle, ball_t ball) {
     return x;
 }
 
-void calculate_direction(ball_direction_t *direction, paddle_t paddle, ball_t ball)
+pos_t get_center()
 {
-    if (paddle_hits_ball(paddle, ball))
+    pos_t center = { (SCREEN_WIDTH / 2), (SCREEN_HEIGHT / 2) };
+    return center;
+}
+
+void update_ball(ball_t *ball, paddle_t left_paddle, paddle_t right_paddle)
+{
+    ball->pos.x += ball->xv;
+    ball->pos.y += ball->yv;
+
+    if ((ball->pos.y < 0) ||
+        (ball->pos.y > SCREEN_HEIGHT))
     {
-        direction->y = -1;
-        direction->x = ball_angle(paddle, ball);
+        ball->yv = -ball->yv;
     }
-    if (ball.pos.y <= 0)
+
+    if ((ball->pos.x < 0) ||
+        (ball->pos.x > SCREEN_WIDTH))
     {
-        direction->y = 1;
+        ball->pos = get_center();
     }
-    if (ball.pos.x < 0)
+
+    if (ball->pos.x < (left_paddle.pos.x + left_paddle.w/2))
     {
-        direction->x = 1;
+        if ((ball->pos.y > (left_paddle.pos.y - left_paddle.h/2)) &&
+            (ball->pos.y < (left_paddle.pos.y + left_paddle.h/2)))
+        {
+            ball->xv = -ball->xv;
+        }
     }
-    if (ball.pos.x >= (SCREEN_WIDTH - ball.w))
+
+    if (ball->pos.x > (right_paddle.pos.x + right_paddle.w/2))
     {
-        direction->x = -1;
+        if ((ball->pos.y > (right_paddle.pos.y - right_paddle.h/2)) &&
+            (ball->pos.y < (right_paddle.pos.y + right_paddle.h/2)))
+        {
+            ball->xv = -ball->xv;
+        }
     }
 }
 
-void move_ball(ball_t *ball, ball_direction_t direction, int frame)
+void update_paddle(paddle_t *paddle, pressed_t pressed)
 {
-    if (frame % BALL_RATE == 0)
+    if (pressed == PRESSED_UP && ((paddle->pos.y - paddle->h/2) > 0))
     {
-        ball->pos.y += direction.y;
-        ball->pos.x += direction.x;
+        if (paddle->pos.y < PADDLE_MOVE)
+        {
+            paddle->pos.y = 0;
+        }
+        else
+        {
+            paddle->pos.y -= PADDLE_MOVE;
+        }
     }
+
+    if ((pressed == PRESSED_DOWN) &&
+        ((paddle->pos.y + paddle->h/2) < SCREEN_HEIGHT))
+    {
+        if ((SCREEN_HEIGHT - (paddle->pos.y + paddle->h/2)) < PADDLE_MOVE)
+        {
+            paddle->pos.y += SCREEN_WIDTH - paddle->pos.y;
+        }
+        else
+        {
+            paddle->pos.y += PADDLE_MOVE;
+        }
+    }
+}
+
+void update_ai_paddle(paddle_t *paddle, ball_t ball)
+{
+    paddle->pos.y = ball.pos.y;
 }
 
 void draw_paddle(paddle_t paddle, u32 *screen_pixels)
 {
     SDL_assert(screen_pixels);
+
+    int startX = paddle.pos.x - paddle.w/2;
+    int startY = paddle.pos.y - paddle.h/2;
+
     for (int row = 0; row < paddle.h; row++)
     {
         for (int col = 0; col < paddle.w; col++)
         {
-            screen_pixels[(row+paddle.pos.y)*SCREEN_WIDTH + col + paddle.pos.x] = GREEN;
+            screen_pixels[(row+startY)*SCREEN_WIDTH + col + startX] = GREEN;
         }
     }
 }
@@ -105,11 +143,15 @@ void draw_paddle(paddle_t paddle, u32 *screen_pixels)
 void draw_ball(ball_t ball, u32 *screen_pixels)
 {
     SDL_assert(screen_pixels);
-    for (int row = 0; row < ball.h; row++)
+
+    for (int row = -ball.radius; row < ball.radius; row++)
     {
-        for (int col = 0; col < ball.w; col++)
+        for (int col = -ball.radius; col < ball.radius; col++)
         {
-            screen_pixels[(row+ball.pos.y)*SCREEN_WIDTH + col + ball.pos.x] = GREEN;
+            if (row*row+col*col < ball.radius)
+            {
+                screen_pixels[(row+ball.pos.y)*SCREEN_WIDTH + col + ball.pos.x] = GREEN;
+            }
         }
     }
 }
@@ -142,19 +184,17 @@ int main(int argc, char *argv[])
 
     BOOL done = FALSE;
     pressed_t pressed = PRESSED_UNDEFINED;
-    ball_direction_t direction = { 0, 1 };
-    int frame = 0;
 
-    ball_t ball = { { 0, 0 }, 5, 5 };
-    ball.pos.x = (SCREEN_WIDTH-ball.w)/2;
-    ball.pos.y = (SCREEN_HEIGHT-ball.h)/2;
-
-    paddle_t paddle = { { 0, 0 }, 40, 5 };
-    paddle.pos.x = (SCREEN_WIDTH-paddle.w)/2;
-    paddle.pos.y = (SCREEN_HEIGHT-paddle.h);
+    ball_t ball = { { (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2) }, 1, 1, 20 };
+    paddle_t player1 = { { 50, (SCREEN_HEIGHT/2) }, 5, 40 };
+    paddle_t player2 = { { (SCREEN_WIDTH - 50), (SCREEN_HEIGHT/2) }, 5, 40 };
+    const int FPS = 120;
+    u32 frame_start;
+    u32 elapsed_time;
 
     while (!done)
     {
+        frame_start = SDL_GetTicks();
         SDL_Event event;
 
         while (SDL_PollEvent(&event))
@@ -167,11 +207,11 @@ int main(int argc, char *argv[])
                 case SDLK_q:
                     done = TRUE;
                     break;
-                case SDLK_LEFT:
-                    pressed = PRESSED_LEFT;
+                case SDLK_UP:
+                    pressed = PRESSED_UP;
                     break;
-                case SDLK_RIGHT:
-                    pressed = PRESSED_RIGHT;
+                case SDLK_DOWN:
+                    pressed = PRESSED_DOWN;
                     break;
                 default:
                     break;
@@ -180,48 +220,27 @@ int main(int argc, char *argv[])
 
         memset(screen_pixels, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(u32));
 
-        if (pressed == PRESSED_LEFT && (paddle.pos.x > 0))
-        {
-            if (paddle.pos.x < PADDLE_MOVE)
-            {
-                paddle.pos.x = 0;
-            }
-            else
-            {
-                paddle.pos.x -= PADDLE_MOVE;
-            }
-        }
+        update_paddle(&player1, pressed);
+        update_ai_paddle(&player2, ball); // Just tracking the ball for now.
+        update_ball(&ball, player1, player2);
 
-        if ((pressed == PRESSED_RIGHT) &&
-            ((paddle.pos.x + paddle.w) < SCREEN_WIDTH))
-        {
-            if ((SCREEN_WIDTH - (paddle.pos.x + paddle.w)) < PADDLE_MOVE)
-            {
-                paddle.pos.x += SCREEN_WIDTH - paddle.pos.x;
-            }
-            else
-            {
-                paddle.pos.x += PADDLE_MOVE;
-            }
-        }
-
-        calculate_direction(&direction, paddle, ball);
-        move_ball(&ball, direction, frame);
-
-        if (ball.pos.y > SCREEN_HEIGHT)
-        {
-            done = TRUE;
-        }
-
-        pressed = PRESSED_UNDEFINED;
-
-        draw_paddle(paddle, screen_pixels);
+        draw_paddle(player1, screen_pixels);
+        draw_paddle(player2, screen_pixels);
         draw_ball(ball, screen_pixels);
+
         SDL_UpdateTexture(screen, NULL, screen_pixels, SCREEN_WIDTH * sizeof(u32));
         SDL_RenderClear(renderer);
         SDL_RenderCopy(renderer, screen, NULL, NULL);
         SDL_RenderPresent(renderer);
-        frame += 1;
+
+        pressed = PRESSED_UNDEFINED;
+
+        elapsed_time = SDL_GetTicks() - frame_start;
+
+        if (1000/FPS > elapsed_time)
+        {
+            SDL_Delay(1000/FPS - (SDL_GetTicks() - frame_start));
+        }
     }
 
     SDL_DestroyWindow(window);
