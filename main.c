@@ -18,6 +18,37 @@ typedef enum {
     PRESSED_DOWN
 } pressed_t;
 
+int nums[4][15] = {
+    {
+        1, 1, 1,
+        1, 0, 1,
+        1, 0, 1,
+        1, 0, 1,
+        1, 1, 1,
+    },
+    {
+        1, 1, 0,
+        0, 1, 0,
+        0, 1, 0,
+        0, 1, 0,
+        1, 1, 1,
+    },
+    {
+        1, 1, 1,
+        0, 0, 1,
+        1, 1, 1,
+        1, 0, 0,
+        1, 1, 1,
+    },
+    {
+        1, 1, 1,
+        0, 0, 1,
+        0, 1, 1,
+        0, 0, 1,
+        1, 1, 1,
+    }
+};
+
 typedef struct {
     float x;
     float y;
@@ -57,7 +88,12 @@ pos_t get_center()
     return center;
 }
 
-void update_ball(ball_t *ball, paddle_t left_paddle, paddle_t right_paddle, float elapsed_time)
+float lerp(float start, float end, float pct)
+{
+    return start + pct*(end-start);
+}
+
+void update_ball(ball_t *ball, paddle_t *left_paddle, paddle_t *right_paddle, float elapsed_time)
 {
     ball->pos.x += ball->xv * (elapsed_time/1000);
     ball->pos.y += ball->yv * (elapsed_time/1000);
@@ -68,25 +104,31 @@ void update_ball(ball_t *ball, paddle_t left_paddle, paddle_t right_paddle, floa
         ball->yv = -ball->yv;
     }
 
-    if ((ball->pos.x < 0) ||
-        (ball->pos.x > SCREEN_WIDTH))
+    if (ball->pos.x < 0)
     {
+        right_paddle->score++;
+        ball->pos = get_center();
+    }
+    else if (ball->pos.x > SCREEN_WIDTH)
+    {
+        left_paddle->score++;
         ball->pos = get_center();
     }
 
-    if (ball->pos.x < (left_paddle.pos.x + left_paddle.w/2))
+
+    if (ball->pos.x < (left_paddle->pos.x + left_paddle->w/2))
     {
-        if ((ball->pos.y > (left_paddle.pos.y - left_paddle.h/2)) &&
-            (ball->pos.y < (left_paddle.pos.y + left_paddle.h/2)))
+        if ((ball->pos.y > (left_paddle->pos.y - left_paddle->h/2)) &&
+            (ball->pos.y < (left_paddle->pos.y + left_paddle->h/2)))
         {
             ball->xv = -ball->xv;
         }
     }
 
-    if (ball->pos.x > (right_paddle.pos.x + right_paddle.w/2))
+    if (ball->pos.x > (right_paddle->pos.x + right_paddle->w/2))
     {
-        if ((ball->pos.y > (right_paddle.pos.y - right_paddle.h/2)) &&
-            (ball->pos.y < (right_paddle.pos.y + right_paddle.h/2)))
+        if ((ball->pos.y > (right_paddle->pos.y - right_paddle->h/2)) &&
+            (ball->pos.y < (right_paddle->pos.y + right_paddle->h/2)))
         {
             ball->xv = -ball->xv;
         }
@@ -112,6 +154,32 @@ void update_ai_paddle(paddle_t *paddle, ball_t ball)
     paddle->pos.y = ball.pos.y;
 }
 
+void draw_number(pos_t pos, int size, int num, u32 *screen_pixels)
+{
+    int startX = pos.x - (size*3)/2;
+    int startY = pos.y - (size*5)/2;
+
+    for (int i = 0; i < 15; i++)
+    {
+        if (nums[num][i] == 1)
+        {
+            for (int y = startY; y < startY+size; y++)
+            {
+                for (int x = startX; x < startX+size; x++)
+                {
+                    screen_pixels[(y)*SCREEN_WIDTH + x] = GREEN;
+                }
+            }
+        }
+        startX += size;
+        if ((i+1)%3 == 0)
+        {
+            startY += size;
+            startX -= size * 3;
+        }
+    }
+}
+
 void draw_paddle(paddle_t paddle, u32 *screen_pixels)
 {
     SDL_assert(screen_pixels);
@@ -126,6 +194,10 @@ void draw_paddle(paddle_t paddle, u32 *screen_pixels)
             screen_pixels[(row+startY)*SCREEN_WIDTH + col + startX] = GREEN;
         }
     }
+
+    int num_x = lerp(paddle.pos.x, get_center().x, 0.2);
+    pos_t num_position = { num_x, 35 };
+    draw_number(num_position, 5, paddle.score, screen_pixels);
 }
 
 void draw_ball(ball_t ball, u32 *screen_pixels)
@@ -229,7 +301,7 @@ int main(int argc, char *argv[])
 
         update_paddle(&player1, pressed, elapsed_time);
         update_ai_paddle(&player2, ball); // Just tracking the ball for now.
-        update_ball(&ball, player1, player2, elapsed_time);
+        update_ball(&ball, &player1, &player2, elapsed_time);
 
         draw_paddle(player1, screen_pixels);
         draw_paddle(player2, screen_pixels);
