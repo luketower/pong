@@ -19,21 +19,23 @@ typedef enum {
 } pressed_t;
 
 typedef struct {
-    int x;
-    int y;
+    float x;
+    float y;
 } pos_t;
 
 typedef struct {
     pos_t pos;
-    int w;
-    int h;
+    float w;
+    float h;
+    float speed;
+    int score;
 } paddle_t;
 
 typedef struct {
     pos_t pos;
     float xv;
     float yv;
-    int radius;
+    float radius;
 } ball_t;
 
 int ball_angle(paddle_t paddle, ball_t ball) {
@@ -55,10 +57,10 @@ pos_t get_center()
     return center;
 }
 
-void update_ball(ball_t *ball, paddle_t left_paddle, paddle_t right_paddle)
+void update_ball(ball_t *ball, paddle_t left_paddle, paddle_t right_paddle, float elapsed_time)
 {
-    ball->pos.x += ball->xv;
-    ball->pos.y += ball->yv;
+    ball->pos.x += ball->xv * (elapsed_time/1000);
+    ball->pos.y += ball->yv * (elapsed_time/1000);
 
     if ((ball->pos.y < 0) ||
         (ball->pos.y > SCREEN_HEIGHT))
@@ -91,31 +93,17 @@ void update_ball(ball_t *ball, paddle_t left_paddle, paddle_t right_paddle)
     }
 }
 
-void update_paddle(paddle_t *paddle, pressed_t pressed)
+void update_paddle(paddle_t *paddle, pressed_t pressed, float elapsed_time)
 {
     if (pressed == PRESSED_UP && ((paddle->pos.y - paddle->h/2) > 0))
     {
-        if (paddle->pos.y < PADDLE_MOVE)
-        {
-            paddle->pos.y = 0;
-        }
-        else
-        {
-            paddle->pos.y -= PADDLE_MOVE;
-        }
+        paddle->pos.y -= paddle->speed * (elapsed_time/1000);
     }
 
     if ((pressed == PRESSED_DOWN) &&
         ((paddle->pos.y + paddle->h/2) < SCREEN_HEIGHT))
     {
-        if ((SCREEN_HEIGHT - (paddle->pos.y + paddle->h/2)) < PADDLE_MOVE)
-        {
-            paddle->pos.y += SCREEN_WIDTH - paddle->pos.y;
-        }
-        else
-        {
-            paddle->pos.y += PADDLE_MOVE;
-        }
+        paddle->pos.y += paddle->speed * (elapsed_time/1000);
     }
 }
 
@@ -150,7 +138,7 @@ void draw_ball(ball_t ball, u32 *screen_pixels)
         {
             if (row*row+col*col < ball.radius)
             {
-                screen_pixels[(row+ball.pos.y)*SCREEN_WIDTH + col + ball.pos.x] = GREEN;
+                screen_pixels[(int)(row+ball.pos.y)*SCREEN_WIDTH + col + (int)ball.pos.x] = GREEN;
             }
         }
     }
@@ -185,12 +173,31 @@ int main(int argc, char *argv[])
     BOOL done = FALSE;
     pressed_t pressed = PRESSED_UNDEFINED;
 
-    ball_t ball = { { (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2) }, 1, 1, 20 };
-    paddle_t player1 = { { 50, (SCREEN_HEIGHT/2) }, 5, 40 };
-    paddle_t player2 = { { (SCREEN_WIDTH - 50), (SCREEN_HEIGHT/2) }, 5, 40 };
-    const int FPS = 120;
+    ball_t ball = {
+        .pos = { (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2) },
+        .xv = 150,
+        .yv = 150,
+        .radius = 20
+    };
+
+    paddle_t player1 = {
+        .pos = { 50, (SCREEN_HEIGHT/2) },
+        .w = 5,
+        .h = 40,
+        .speed = 600,
+        .score = 0
+    };
+
+    paddle_t player2 = {
+        .pos = { (SCREEN_WIDTH - 50), (SCREEN_HEIGHT/2) },
+        .w = 5,
+        .h = 40,
+        .speed = 300,
+        .score = 0
+    };
+
     u32 frame_start;
-    u32 elapsed_time;
+    float elapsed_time;
 
     while (!done)
     {
@@ -220,9 +227,9 @@ int main(int argc, char *argv[])
 
         memset(screen_pixels, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(u32));
 
-        update_paddle(&player1, pressed);
+        update_paddle(&player1, pressed, elapsed_time);
         update_ai_paddle(&player2, ball); // Just tracking the ball for now.
-        update_ball(&ball, player1, player2);
+        update_ball(&ball, player1, player2, elapsed_time);
 
         draw_paddle(player1, screen_pixels);
         draw_paddle(player2, screen_pixels);
@@ -234,12 +241,12 @@ int main(int argc, char *argv[])
         SDL_RenderPresent(renderer);
 
         pressed = PRESSED_UNDEFINED;
+        elapsed_time = (float)(SDL_GetTicks() - frame_start);
 
-        elapsed_time = SDL_GetTicks() - frame_start;
-
-        if (1000/FPS > elapsed_time)
+        if (elapsed_time < 6)
         {
-            SDL_Delay(1000/FPS - (SDL_GetTicks() - frame_start));
+            SDL_Delay(6 - (u32)(elapsed_time));
+            elapsed_time = (float)(SDL_GetTicks() - frame_start);
         }
     }
 
