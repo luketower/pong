@@ -15,8 +15,17 @@ typedef Uint32 u32;
 typedef enum {
     PRESSED_UNDEFINED,
     PRESSED_UP,
-    PRESSED_DOWN
+    PRESSED_DOWN,
+    PRESSED_SPACE
 } pressed_t;
+
+typedef enum {
+    GAME_READY,
+    GAME_PLAY,
+    GAME_OVER
+} game_state_t;
+
+game_state_t state;
 
 int nums[4][15] = {
     {
@@ -69,19 +78,6 @@ typedef struct {
     float radius;
 } ball_t;
 
-int ball_angle(paddle_t paddle, ball_t ball) {
-    int x = 0;
-    if (ball.pos.x < (paddle.pos.x + 15))
-    {
-        x -= 1;
-    }
-    else if (ball.pos.x > (paddle.pos.x + 25))
-    {
-        x += 1;
-    }
-    return x;
-}
-
 pos_t get_center()
 {
     pos_t center = { (SCREEN_WIDTH / 2), (SCREEN_HEIGHT / 2) };
@@ -91,6 +87,12 @@ pos_t get_center()
 float lerp(float start, float end, float pct)
 {
     return start + pct*(end-start);
+}
+
+void reset_paddle_positions(paddle_t *left_paddle, paddle_t *right_paddle)
+{
+    left_paddle->pos.y = SCREEN_HEIGHT/2;
+    right_paddle->pos.y = SCREEN_HEIGHT/2;
 }
 
 void update_ball(ball_t *ball, paddle_t *left_paddle, paddle_t *right_paddle, float elapsed_time)
@@ -107,16 +109,20 @@ void update_ball(ball_t *ball, paddle_t *left_paddle, paddle_t *right_paddle, fl
     if (ball->pos.x < 0)
     {
         right_paddle->score++;
+        reset_paddle_positions(left_paddle, right_paddle);
         ball->pos = get_center();
+        state = GAME_READY;
     }
     else if (ball->pos.x > SCREEN_WIDTH)
     {
         left_paddle->score++;
+        reset_paddle_positions(left_paddle, right_paddle);
         ball->pos = get_center();
+        state = GAME_READY;
     }
 
 
-    if (ball->pos.x < (left_paddle->pos.x + left_paddle->w/2))
+    if ((ball->pos.x-ball->radius) < (left_paddle->pos.x + left_paddle->w/2))
     {
         if ((ball->pos.y > (left_paddle->pos.y - left_paddle->h/2)) &&
             (ball->pos.y < (left_paddle->pos.y + left_paddle->h/2)))
@@ -125,7 +131,7 @@ void update_ball(ball_t *ball, paddle_t *left_paddle, paddle_t *right_paddle, fl
         }
     }
 
-    if (ball->pos.x > (right_paddle->pos.x + right_paddle->w/2))
+    if ((ball->pos.x+ball->radius) > (right_paddle->pos.x + right_paddle->w/2))
     {
         if ((ball->pos.y > (right_paddle->pos.y - right_paddle->h/2)) &&
             (ball->pos.y < (right_paddle->pos.y + right_paddle->h/2)))
@@ -270,6 +276,7 @@ int main(int argc, char *argv[])
 
     u32 frame_start;
     float elapsed_time;
+    state = GAME_READY;
 
     while (!done)
     {
@@ -292,16 +299,35 @@ int main(int argc, char *argv[])
                 case SDLK_DOWN:
                     pressed = PRESSED_DOWN;
                     break;
+                case SDLK_SPACE:
+                    pressed = PRESSED_SPACE;
                 default:
                     break;
             }
         }
 
-        memset(screen_pixels, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(u32));
 
-        update_paddle(&player1, pressed, elapsed_time);
-        update_ai_paddle(&player2, ball); // Just tracking the ball for now.
-        update_ball(&ball, &player1, &player2, elapsed_time);
+        if (state == GAME_PLAY)
+        {
+            update_paddle(&player1, pressed, elapsed_time);
+            update_ai_paddle(&player2, ball); // Just tracking the ball for now.
+            update_ball(&ball, &player1, &player2, elapsed_time);
+        }
+        else if (state == GAME_READY)
+        {
+            if (pressed == PRESSED_SPACE)
+            {
+                state = GAME_PLAY;
+
+                if (player1.score == 3 || player2.score == 3)
+                {
+                    player1.score = 0;
+                    player2.score = 0;
+                }
+            }
+        }
+
+        memset(screen_pixels, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(u32));
 
         draw_paddle(player1, screen_pixels);
         draw_paddle(player2, screen_pixels);
