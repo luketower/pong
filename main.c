@@ -6,9 +6,7 @@
 #define FALSE 0
 #define TRUE 1
 #define BOOL u32
-#define PADDLE_MOVE 4
 #define GREEN 0x21fb00
-#define BALL_RATE 2
 
 typedef Uint32 u32;
 
@@ -104,6 +102,7 @@ void update_ball(ball_t *ball, paddle_t *left_paddle, paddle_t *right_paddle, fl
         (ball->pos.y > SCREEN_HEIGHT))
     {
         ball->yv = -ball->yv;
+        return;
     }
 
     if (ball->pos.x < 0)
@@ -112,6 +111,7 @@ void update_ball(ball_t *ball, paddle_t *left_paddle, paddle_t *right_paddle, fl
         reset_paddle_positions(left_paddle, right_paddle);
         ball->pos = get_center();
         state = GAME_READY;
+        return;
     }
     else if (ball->pos.x > SCREEN_WIDTH)
     {
@@ -119,19 +119,21 @@ void update_ball(ball_t *ball, paddle_t *left_paddle, paddle_t *right_paddle, fl
         reset_paddle_positions(left_paddle, right_paddle);
         ball->pos = get_center();
         state = GAME_READY;
+        return;
     }
 
 
-    if ((ball->pos.x-ball->radius) < (left_paddle->pos.x + left_paddle->w/2))
+    if (ball->pos.x < (left_paddle->pos.x + left_paddle->w/2))
     {
         if ((ball->pos.y > (left_paddle->pos.y - left_paddle->h/2)) &&
             (ball->pos.y < (left_paddle->pos.y + left_paddle->h/2)))
         {
             ball->xv = -ball->xv;
+            return;
         }
     }
 
-    if ((ball->pos.x+ball->radius) > (right_paddle->pos.x + right_paddle->w/2))
+    if (ball->pos.x > (right_paddle->pos.x - right_paddle->w/2))
     {
         if ((ball->pos.y > (right_paddle->pos.y - right_paddle->h/2)) &&
             (ball->pos.y < (right_paddle->pos.y + right_paddle->h/2)))
@@ -255,7 +257,7 @@ int main(int argc, char *argv[])
         .pos = { (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2) },
         .xv = 150,
         .yv = 150,
-        .radius = 20
+        .radius = 30
     };
 
     paddle_t player1 = {
