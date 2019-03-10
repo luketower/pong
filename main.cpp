@@ -10,20 +10,20 @@
 
 typedef Uint32 u32;
 
-typedef enum {
+enum keyboard_press {
     PRESSED_UNDEFINED,
     PRESSED_UP,
     PRESSED_DOWN,
     PRESSED_SPACE
-} pressed_t;
+};
 
-typedef enum {
+enum game_state {
     GAME_READY,
     GAME_PLAY,
     GAME_OVER
-} game_state_t;
+};
 
-game_state_t state;
+game_state state;
 
 int nums[4][15] = {
     {
@@ -56,29 +56,29 @@ int nums[4][15] = {
     }
 };
 
-typedef struct {
+struct pos {
     float x;
     float y;
-} pos_t;
+};
 
-typedef struct {
-    pos_t pos;
+struct paddle {
+    pos pos;
     float w;
     float h;
     float speed;
     int score;
-} paddle_t;
+};
 
-typedef struct {
-    pos_t pos;
+struct ball {
+    pos pos;
     float xv;
     float yv;
     float radius;
-} ball_t;
+};
 
-pos_t get_center()
+pos get_center()
 {
-    pos_t center = { (SCREEN_WIDTH / 2), (SCREEN_HEIGHT / 2) };
+    pos center = { (SCREEN_WIDTH / 2), (SCREEN_HEIGHT / 2) };
     return center;
 }
 
@@ -87,13 +87,13 @@ float lerp(float start, float end, float pct)
     return start + pct*(end-start);
 }
 
-void reset_paddle_positions(paddle_t *left_paddle, paddle_t *right_paddle)
+void reset_paddle_positions(paddle *left_paddle, paddle *right_paddle)
 {
     left_paddle->pos.y = SCREEN_HEIGHT/2;
     right_paddle->pos.y = SCREEN_HEIGHT/2;
 }
 
-void update_ball(ball_t *ball, paddle_t *left_paddle, paddle_t *right_paddle, float elapsed_time)
+void update_ball(ball *ball, paddle *left_paddle, paddle *right_paddle, float elapsed_time)
 {
     ball->pos.x += ball->xv * (elapsed_time/1000);
     ball->pos.y += ball->yv * (elapsed_time/1000);
@@ -143,7 +143,7 @@ void update_ball(ball_t *ball, paddle_t *left_paddle, paddle_t *right_paddle, fl
     }
 }
 
-void update_paddle(paddle_t *paddle, pressed_t pressed, float elapsed_time)
+void update_paddle(paddle *paddle, keyboard_press pressed, float elapsed_time)
 {
     if (pressed == PRESSED_UP && ((paddle->pos.y - paddle->h/2) > 0))
     {
@@ -157,12 +157,12 @@ void update_paddle(paddle_t *paddle, pressed_t pressed, float elapsed_time)
     }
 }
 
-void update_ai_paddle(paddle_t *paddle, ball_t ball)
+void update_ai_paddle(paddle *paddle, ball ball)
 {
     paddle->pos.y = ball.pos.y;
 }
 
-void draw_number(pos_t pos, int size, int num, u32 *screen_pixels)
+void draw_number(pos pos, int size, int num, u32 *screen_pixels)
 {
     int startX = pos.x - (size*3)/2;
     int startY = pos.y - (size*5)/2;
@@ -188,7 +188,7 @@ void draw_number(pos_t pos, int size, int num, u32 *screen_pixels)
     }
 }
 
-void draw_paddle(paddle_t paddle, u32 *screen_pixels)
+void draw_paddle(paddle paddle, u32 *screen_pixels)
 {
     SDL_assert(screen_pixels);
 
@@ -204,11 +204,11 @@ void draw_paddle(paddle_t paddle, u32 *screen_pixels)
     }
 
     int num_x = lerp(paddle.pos.x, get_center().x, 0.2);
-    pos_t num_position = { num_x, 35 };
+    pos num_position = { num_x, 35 };
     draw_number(num_position, 5, paddle.score, screen_pixels);
 }
 
-void draw_ball(ball_t ball, u32 *screen_pixels)
+void draw_ball(ball ball, u32 *screen_pixels)
 {
     SDL_assert(screen_pixels);
 
@@ -251,16 +251,16 @@ int main(int argc, char *argv[])
     SDL_assert(screen_pixels);
 
     BOOL done = FALSE;
-    pressed_t pressed = PRESSED_UNDEFINED;
+    keyboard_press pressed = PRESSED_UNDEFINED;
 
-    ball_t ball = {
+    ball ball = {
         .pos = { (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2) },
         .xv = 150,
         .yv = 150,
         .radius = 30
     };
 
-    paddle_t player1 = {
+    paddle player1 = {
         .pos = { 50, (SCREEN_HEIGHT/2) },
         .w = 5,
         .h = 40,
@@ -268,7 +268,7 @@ int main(int argc, char *argv[])
         .score = 0
     };
 
-    paddle_t player2 = {
+    paddle player2 = {
         .pos = { (SCREEN_WIDTH - 50), (SCREEN_HEIGHT/2) },
         .w = 5,
         .h = 40,

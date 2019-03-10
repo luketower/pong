@@ -1,4 +1,4 @@
-COMPILE = gcc -g -Wall main.c -o pong -I include -L lib -l SDL2-2.0.0
+COMPILE = gcc -g -Wall main.cpp -o pong -I include -L lib -l SDL2-2.0.0
 
 build:
 	$(COMPILE)
