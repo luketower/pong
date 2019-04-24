@@ -3,9 +3,10 @@
 
 #define SCREEN_WIDTH 540
 #define SCREEN_HEIGHT 480
+#define DISTANCE_FROM_WALL 50
 #define FALSE 0
 #define TRUE 1
-#define BOOL u32
+#define bool u32
 #define GREEN 0x21fb00
 
 typedef Uint32 u32;
@@ -23,9 +24,9 @@ enum game_state {
     GAME_OVER
 };
 
-game_state state;
+game_state State;
 
-int nums[4][15] = {
+int ScoreNumbers[4][15] = {
     {
         1, 1, 1,
         1, 0, 1,
@@ -56,169 +57,201 @@ int nums[4][15] = {
     }
 };
 
-struct pos {
-    float x;
-    float y;
+struct position {
+    float X;
+    float Y;
 };
 
 struct paddle {
-    pos pos;
-    float w;
-    float h;
-    float speed;
-    int score;
+    position Position;
+    float Width;
+    float Height;
+    float Speed;
+    int Score;
 };
 
 struct ball {
-    pos pos;
-    float xv;
-    float yv;
-    float radius;
+    position Position;
+    float VelocityX;
+    float VelocityY;
+    float Radius;
 };
 
-pos get_center()
+int SCREEN_VERTICAL_CENTER = SCREEN_HEIGHT/2;
+int SCREEN_HORIZONTAL_CENTER = SCREEN_WIDTH/2;
+position SCREEN_CENTER = { SCREEN_HORIZONTAL_CENTER, SCREEN_VERTICAL_CENTER };
+
+float Lerp(float Start, float End, float Percent)
 {
-    pos center = { (SCREEN_WIDTH / 2), (SCREEN_HEIGHT / 2) };
-    return center;
+    return Start + (End-Start)*Percent;
 }
 
-float lerp(float start, float end, float pct)
+void ResetPaddlePositions(paddle *LeftPaddle, paddle *RightPaddle)
 {
-    return start + pct*(end-start);
+    LeftPaddle->Position.Y = SCREEN_VERTICAL_CENTER;
+    RightPaddle->Position.Y = SCREEN_VERTICAL_CENTER;
 }
 
-void reset_paddle_positions(paddle *left_paddle, paddle *right_paddle)
+void UpdateBall(ball *Ball, paddle *LeftPaddle, paddle *RightPaddle, float ElapsedTime)
 {
-    left_paddle->pos.y = SCREEN_HEIGHT/2;
-    right_paddle->pos.y = SCREEN_HEIGHT/2;
-}
+    Ball->Position.X += Ball->VelocityX * (ElapsedTime/1000);
+    Ball->Position.Y += Ball->VelocityY * (ElapsedTime/1000);
 
-void update_ball(ball *ball, paddle *left_paddle, paddle *right_paddle, float elapsed_time)
-{
-    ball->pos.x += ball->xv * (elapsed_time/1000);
-    ball->pos.y += ball->yv * (elapsed_time/1000);
-
-    if ((ball->pos.y < 0) ||
-        (ball->pos.y > SCREEN_HEIGHT))
+    if((Ball->Position.Y < 0) ||
+       (Ball->Position.Y > SCREEN_HEIGHT))
     {
-        ball->yv = -ball->yv;
+        Ball->VelocityY = -Ball->VelocityY;
         return;
     }
 
-    if (ball->pos.x < 0)
+    if(Ball->Position.X < 0)
     {
-        right_paddle->score++;
-        reset_paddle_positions(left_paddle, right_paddle);
-        ball->pos = get_center();
-        state = GAME_READY;
+        RightPaddle->Score++;
+        ResetPaddlePositions(LeftPaddle, RightPaddle);
+        Ball->Position = SCREEN_CENTER;
+        State = GAME_READY;
         return;
     }
-    else if (ball->pos.x > SCREEN_WIDTH)
+    else if(Ball->Position.X > SCREEN_WIDTH)
     {
-        left_paddle->score++;
-        reset_paddle_positions(left_paddle, right_paddle);
-        ball->pos = get_center();
-        state = GAME_READY;
+        LeftPaddle->Score++;
+        ResetPaddlePositions(LeftPaddle, RightPaddle);
+        Ball->Position = SCREEN_CENTER;
+        State = GAME_READY;
         return;
     }
 
-
-    if (ball->pos.x < (left_paddle->pos.x + left_paddle->w/2))
+    if(Ball->Position.X < (LeftPaddle->Position.X + LeftPaddle->Width/2))
     {
-        if ((ball->pos.y > (left_paddle->pos.y - left_paddle->h/2)) &&
-            (ball->pos.y < (left_paddle->pos.y + left_paddle->h/2)))
+        if((Ball->Position.Y > (LeftPaddle->Position.Y - LeftPaddle->Height/2)) &&
+           (Ball->Position.Y < (LeftPaddle->Position.Y + LeftPaddle->Height/2)))
         {
-            ball->xv = -ball->xv;
+            Ball->VelocityX = -Ball->VelocityX;
             return;
         }
     }
 
-    if (ball->pos.x > (right_paddle->pos.x - right_paddle->w/2))
+    if(Ball->Position.X > (RightPaddle->Position.X - RightPaddle->Width/2))
     {
-        if ((ball->pos.y > (right_paddle->pos.y - right_paddle->h/2)) &&
-            (ball->pos.y < (right_paddle->pos.y + right_paddle->h/2)))
+        if((Ball->Position.Y > (RightPaddle->Position.Y - RightPaddle->Height/2)) &&
+           (Ball->Position.Y < (RightPaddle->Position.Y + RightPaddle->Height/2)))
         {
-            ball->xv = -ball->xv;
+            Ball->VelocityX = -Ball->VelocityX;
         }
     }
 }
 
-void update_paddle(paddle *paddle, keyboard_press pressed, float elapsed_time)
+void UpdatePaddle(paddle *Paddle, keyboard_press Pressed, float ElapsedTime)
 {
-    if (pressed == PRESSED_UP && ((paddle->pos.y - paddle->h/2) > 0))
+    if(Pressed == PRESSED_UP && ((Paddle->Position.Y - Paddle->Height/2) > 0))
     {
-        paddle->pos.y -= paddle->speed * (elapsed_time/1000);
+        Paddle->Position.Y -= Paddle->Speed * (ElapsedTime/1000);
     }
 
-    if ((pressed == PRESSED_DOWN) &&
-        ((paddle->pos.y + paddle->h/2) < SCREEN_HEIGHT))
+    if((Pressed == PRESSED_DOWN) &&
+        ((Paddle->Position.Y + Paddle->Height/2) < SCREEN_HEIGHT))
     {
-        paddle->pos.y += paddle->speed * (elapsed_time/1000);
+        Paddle->Position.Y += Paddle->Speed * (ElapsedTime/1000);
     }
 }
 
-void update_ai_paddle(paddle *paddle, ball ball)
+void UpdateAiPaddle(paddle *Paddle, ball Ball)
 {
-    paddle->pos.y = ball.pos.y;
+    Paddle->Position.Y = Ball.Position.Y;
 }
 
-void draw_number(pos pos, int size, int num, u32 *screen_pixels)
+void DrawScore(position Position, int Size, int Num, u32 *ScreenPixels)
 {
-    int startX = pos.x - (size*3)/2;
-    int startY = pos.y - (size*5)/2;
+    int StartX = Position.X - (Size*3)/2;
+    int StartY = Position.Y - (Size*5)/2;
 
-    for (int i = 0; i < 15; i++)
+    for(int i = 0; i < 15; i++)
     {
-        if (nums[num][i] == 1)
+        if(ScoreNumbers[Num][i] == 1)
         {
-            for (int y = startY; y < startY+size; y++)
+            for(int y = StartY; y < StartY+Size; y++)
             {
-                for (int x = startX; x < startX+size; x++)
+                for(int x = StartX; x < StartX+Size; x++)
                 {
-                    screen_pixels[(y)*SCREEN_WIDTH + x] = GREEN;
+                    ScreenPixels[(y)*SCREEN_WIDTH + x] = GREEN;
                 }
             }
         }
-        startX += size;
-        if ((i+1)%3 == 0)
+        StartX += Size;
+        if((i+1)%3 == 0)
         {
-            startY += size;
-            startX -= size * 3;
+            StartY += Size;
+            StartX -= Size * 3;
         }
     }
 }
 
-void draw_paddle(paddle paddle, u32 *screen_pixels)
+ball InitBall()
 {
-    SDL_assert(screen_pixels);
+    ball Ball;
 
-    int startX = paddle.pos.x - paddle.w/2;
-    int startY = paddle.pos.y - paddle.h/2;
+    Ball.Position.X = SCREEN_HORIZONTAL_CENTER;
+    Ball.Position.Y = SCREEN_VERTICAL_CENTER;
+    Ball.VelocityX = 150;
+    Ball.VelocityY = 150;
+    Ball.Radius = 30;
 
-    for (int row = 0; row < paddle.h; row++)
+    return Ball;
+}
+
+paddle InitPaddle(bool IsLeftPaddle)
+{
+    paddle Paddle;
+
+    if(IsLeftPaddle)
     {
-        for (int col = 0; col < paddle.w; col++)
+        Paddle.Position.X = DISTANCE_FROM_WALL;
+    }
+    else
+    {
+        Paddle.Position.X = SCREEN_WIDTH - DISTANCE_FROM_WALL;
+    }
+
+    Paddle.Position.Y = SCREEN_VERTICAL_CENTER;
+    Paddle.Width = 5;
+    Paddle.Height = 40;
+    Paddle.Speed = 600;
+    Paddle.Score = 0;
+
+    return Paddle;
+}
+
+void DrawPaddle(paddle Paddle, u32 *ScreenPixels)
+{
+    SDL_assert(ScreenPixels);
+
+    int StartX = Paddle.Position.X - Paddle.Width/2;
+    int StartY = Paddle.Position.Y - Paddle.Height/2;
+
+    for(int Row = 0; Row < Paddle.Height; Row++)
+    {
+        for(int Col = 0; Col < Paddle.Width; Col++)
         {
-            screen_pixels[(row+startY)*SCREEN_WIDTH + col + startX] = GREEN;
+            ScreenPixels[(Row+StartY)*SCREEN_WIDTH + Col + StartX] = GREEN;
         }
     }
 
-    int num_x = lerp(paddle.pos.x, get_center().x, 0.2);
-    pos num_position = { num_x, 35 };
-    draw_number(num_position, 5, paddle.score, screen_pixels);
+    int ScoreX = Lerp(Paddle.Position.X, SCREEN_CENTER.X, 0.2);
+    position ScorePosition = { ScoreX, 35 };
+    DrawScore(ScorePosition, 5, Paddle.Score, ScreenPixels);
 }
 
-void draw_ball(ball ball, u32 *screen_pixels)
+void DrawBall(ball Ball, u32 *ScreenPixels)
 {
-    SDL_assert(screen_pixels);
+    SDL_assert(ScreenPixels);
 
-    for (int row = -ball.radius; row < ball.radius; row++)
+    for(int Row = -Ball.Radius; Row < Ball.Radius; Row++)
     {
-        for (int col = -ball.radius; col < ball.radius; col++)
+        for(int Col = -Ball.Radius; Col < Ball.Radius; Col++)
         {
-            if (row*row+col*col < ball.radius)
+            if(Row*Row+Col*Col < Ball.Radius)
             {
-                screen_pixels[(int)(row+ball.pos.y)*SCREEN_WIDTH + col + (int)ball.pos.x] = GREEN;
+                ScreenPixels[(int)(Row+Ball.Position.Y)*SCREEN_WIDTH + Col +(int)Ball.Position.X] = GREEN;
             }
         }
     }
@@ -228,129 +261,114 @@ int main(int argc, char *argv[])
 {
     SDL_Init(SDL_INIT_VIDEO);
 
-    SDL_Window *window = SDL_CreateWindow("Pong Song",
+    SDL_Window *Window = SDL_CreateWindow("Pong Song",
                               SDL_WINDOWPOS_UNDEFINED,
                               SDL_WINDOWPOS_UNDEFINED,
                               SCREEN_WIDTH,
                               SCREEN_HEIGHT,
                               SDL_WINDOW_SHOWN);
 
-    SDL_assert(window);
+    SDL_assert(Window);
 
-    SDL_Renderer *renderer = SDL_CreateRenderer(window, 0, SDL_RENDERER_SOFTWARE);
-    SDL_assert(renderer);
+    SDL_Renderer *Renderer = SDL_CreateRenderer(Window, 0, SDL_RENDERER_SOFTWARE);
+    SDL_assert(Renderer);
 
-    SDL_Texture *screen = SDL_CreateTexture(renderer,
+    SDL_Texture *Screen = SDL_CreateTexture(Renderer,
                                             SDL_PIXELFORMAT_RGB888,
                                             SDL_TEXTUREACCESS_STREAMING,
                                             SCREEN_WIDTH,
                                             SCREEN_HEIGHT);
-    SDL_assert(screen);
+    SDL_assert(Screen);
 
-    u32 *screen_pixels = (u32*) calloc(SCREEN_WIDTH * SCREEN_HEIGHT, sizeof(u32));
-    SDL_assert(screen_pixels);
+    u32 *ScreenPixels = (u32*) calloc(SCREEN_WIDTH * SCREEN_HEIGHT, sizeof(u32));
+    SDL_assert(ScreenPixels);
 
-    BOOL done = FALSE;
-    keyboard_press pressed = PRESSED_UNDEFINED;
+    bool Done = FALSE;
+    keyboard_press Pressed = PRESSED_UNDEFINED;
 
-    ball ball = {
-        .pos = { (SCREEN_WIDTH/2), (SCREEN_HEIGHT/2) },
-        .xv = 150,
-        .yv = 150,
-        .radius = 30
-    };
+    ball Ball = InitBall();
 
-    paddle player1 = {
-        .pos = { 50, (SCREEN_HEIGHT/2) },
-        .w = 5,
-        .h = 40,
-        .speed = 600,
-        .score = 0
-    };
+    bool IsLeftPaddle = TRUE;
+    paddle LeftPaddle = InitPaddle(IsLeftPaddle);
 
-    paddle player2 = {
-        .pos = { (SCREEN_WIDTH - 50), (SCREEN_HEIGHT/2) },
-        .w = 5,
-        .h = 40,
-        .speed = 300,
-        .score = 0
-    };
+    IsLeftPaddle = FALSE;
+    paddle RightPaddle = InitPaddle(IsLeftPaddle);
 
-    u32 frame_start;
-    float elapsed_time;
-    state = GAME_READY;
+    u32 FrameStart;
+    float ElapsedTime;
+    State = GAME_READY;
 
-    while (!done)
+    while (!Done)
     {
-        frame_start = SDL_GetTicks();
-        SDL_Event event;
+        FrameStart = SDL_GetTicks();
+        SDL_Event Event;
 
-        while (SDL_PollEvent(&event))
+        while (SDL_PollEvent(&Event))
         {
-            SDL_Keycode code = event.key.keysym.sym;
+            SDL_Keycode KeyCode = Event.key.keysym.sym;
 
-            switch (code)
+            switch (KeyCode)
             {
                 case SDLK_ESCAPE:
                 case SDLK_q:
-                    done = TRUE;
+                    Done = TRUE;
                     break;
                 case SDLK_UP:
-                    pressed = PRESSED_UP;
+                    Pressed = PRESSED_UP;
                     break;
                 case SDLK_DOWN:
-                    pressed = PRESSED_DOWN;
+                    Pressed = PRESSED_DOWN;
                     break;
                 case SDLK_SPACE:
-                    pressed = PRESSED_SPACE;
+                    Pressed = PRESSED_SPACE;
                 default:
                     break;
             }
         }
 
 
-        if (state == GAME_PLAY)
+        if(State == GAME_PLAY)
         {
-            update_paddle(&player1, pressed, elapsed_time);
-            update_ai_paddle(&player2, ball); // Just tracking the ball for now.
-            update_ball(&ball, &player1, &player2, elapsed_time);
+            UpdatePaddle(&LeftPaddle, Pressed, ElapsedTime);
+            UpdateAiPaddle(&RightPaddle, Ball); // Just tracking the ball for now.
+            UpdateBall(&Ball, &LeftPaddle, &RightPaddle, ElapsedTime);
         }
-        else if (state == GAME_READY)
+        else if(State == GAME_READY)
         {
-            if (pressed == PRESSED_SPACE)
+            if(Pressed == PRESSED_SPACE)
             {
-                state = GAME_PLAY;
+                State = GAME_PLAY;
 
-                if (player1.score == 3 || player2.score == 3)
+                if (LeftPaddle.Score == 3 || RightPaddle.Score == 3)
                 {
-                    player1.score = 0;
-                    player2.score = 0;
+                    LeftPaddle.Score = 0;
+                    RightPaddle.Score = 0;
                 }
             }
         }
 
-        memset(screen_pixels, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(u32));
+        memset(ScreenPixels, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(u32));
 
-        draw_paddle(player1, screen_pixels);
-        draw_paddle(player2, screen_pixels);
-        draw_ball(ball, screen_pixels);
+        DrawPaddle(LeftPaddle, ScreenPixels);
+        DrawPaddle(RightPaddle, ScreenPixels);
+        DrawBall(Ball, ScreenPixels);
 
-        SDL_UpdateTexture(screen, NULL, screen_pixels, SCREEN_WIDTH * sizeof(u32));
-        SDL_RenderClear(renderer);
-        SDL_RenderCopy(renderer, screen, NULL, NULL);
-        SDL_RenderPresent(renderer);
+        SDL_UpdateTexture(Screen, NULL, ScreenPixels, SCREEN_WIDTH * sizeof(u32));
+        SDL_RenderClear(Renderer);
+        SDL_RenderCopy(Renderer, Screen, NULL, NULL);
+        SDL_RenderPresent(Renderer);
 
-        pressed = PRESSED_UNDEFINED;
-        elapsed_time = (float)(SDL_GetTicks() - frame_start);
+        Pressed = PRESSED_UNDEFINED;
+        ElapsedTime = (float)(SDL_GetTicks() - FrameStart);
 
-        if (elapsed_time < 6)
+        if(ElapsedTime < 6)
         {
-            SDL_Delay(6 - (u32)(elapsed_time));
-            elapsed_time = (float)(SDL_GetTicks() - frame_start);
+            SDL_Delay(6 - (u32)(ElapsedTime));
+            ElapsedTime = (float)(SDL_GetTicks() - FrameStart);
         }
     }
 
-    SDL_DestroyWindow(window);
+    SDL_DestroyWindow(Window);
     SDL_Quit();
 
     return 0;
