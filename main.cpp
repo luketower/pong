@@ -13,20 +13,21 @@
 typedef uint32_t u32;
 typedef uint8_t u8;;
 
-enum keyboard_press {
-    PRESSED_UNDEFINED,
-    PRESSED_UP,
-    PRESSED_DOWN,
-    PRESSED_SPACE
+enum keyboard_press
+{
+    KeyboardPress_Undefined,
+    KeyboardPress_Up,
+    KeyboardPress_Down,
+    KeyboardPress_Space
 };
 
-enum game_state {
-    GAME_READY,
-    GAME_PLAY,
-    GAME_OVER
+enum game_mode
+{
+    GameMode_Ready,
+    GameMode_Play
 };
 
-global game_state State;
+global game_mode GameMode;
 
 global int ScoreNumbers[4][15] =
 {
@@ -60,12 +61,14 @@ global int ScoreNumbers[4][15] =
     }
 };
 
-struct position {
+struct position
+{
     float X;
     float Y;
 };
 
-struct paddle {
+struct paddle
+{
     position Position;
     float Width;
     float Height;
@@ -73,7 +76,8 @@ struct paddle {
     int Score;
 };
 
-struct ball {
+struct ball
+{
     position Position;
     float VelocityX;
     float VelocityY;
@@ -112,7 +116,7 @@ void UpdateBall(ball *Ball, paddle *LeftPaddle, paddle *RightPaddle, float Elaps
         RightPaddle->Score++;
         ResetPaddlePositions(LeftPaddle, RightPaddle);
         Ball->Position = SCREEN_CENTER;
-        State = GAME_READY;
+        GameMode = GameMode_Ready;
         return;
     }
     else if(Ball->Position.X > SCREEN_WIDTH)
@@ -120,7 +124,7 @@ void UpdateBall(ball *Ball, paddle *LeftPaddle, paddle *RightPaddle, float Elaps
         LeftPaddle->Score++;
         ResetPaddlePositions(LeftPaddle, RightPaddle);
         Ball->Position = SCREEN_CENTER;
-        State = GAME_READY;
+        GameMode = GameMode_Ready;
         return;
     }
 
@@ -144,14 +148,14 @@ void UpdateBall(ball *Ball, paddle *LeftPaddle, paddle *RightPaddle, float Elaps
     }
 }
 
-void UpdatePaddle(paddle *Paddle, keyboard_press Pressed, float ElapsedTime)
+void UpdatePaddle(paddle *Paddle, keyboard_press KeyboardPress, float ElapsedTime)
 {
-    if(Pressed == PRESSED_UP && ((Paddle->Position.Y - Paddle->Height/2) > 0))
+    if(KeyboardPress == KeyboardPress_Up && ((Paddle->Position.Y - Paddle->Height/2) > 0))
     {
         Paddle->Position.Y -= Paddle->Speed * (ElapsedTime/1000);
     }
 
-    if((Pressed == PRESSED_DOWN) &&
+    if((KeyboardPress == KeyboardPress_Down) &&
         ((Paddle->Position.Y + Paddle->Height/2) < SCREEN_HEIGHT))
     {
         Paddle->Position.Y += Paddle->Speed * (ElapsedTime/1000);
@@ -287,7 +291,7 @@ int main(int argc, char *argv[])
     SDL_assert(ScreenPixels);
 
     bool Done = FALSE;
-    keyboard_press Pressed = PRESSED_UNDEFINED;
+    keyboard_press KeyboardPress = KeyboardPress_Undefined;
 
     ball Ball = InitBall();
 
@@ -299,7 +303,7 @@ int main(int argc, char *argv[])
 
     u32 FrameStart;
     float ElapsedTime;
-    State = GAME_READY;
+    GameMode = GameMode_Ready;
 
     while (!Done)
     {
@@ -317,30 +321,30 @@ int main(int argc, char *argv[])
                     Done = TRUE;
                     break;
                 case SDLK_UP:
-                    Pressed = PRESSED_UP;
+                    KeyboardPress = KeyboardPress_Up;
                     break;
                 case SDLK_DOWN:
-                    Pressed = PRESSED_DOWN;
+                    KeyboardPress = KeyboardPress_Down;
                     break;
                 case SDLK_SPACE:
-                    Pressed = PRESSED_SPACE;
+                    KeyboardPress = KeyboardPress_Space;
                 default:
                     break;
             }
         }
 
 
-        if(State == GAME_PLAY)
+        if(GameMode == GameMode_Play)
         {
-            UpdatePaddle(&LeftPaddle, Pressed, ElapsedTime);
+            UpdatePaddle(&LeftPaddle, KeyboardPress, ElapsedTime);
             UpdateAiPaddle(&RightPaddle, Ball); // Just tracking the ball for now.
             UpdateBall(&Ball, &LeftPaddle, &RightPaddle, ElapsedTime);
         }
-        else if(State == GAME_READY)
+        else if(GameMode == GameMode_Ready)
         {
-            if(Pressed == PRESSED_SPACE)
+            if(KeyboardPress == KeyboardPress_Space)
             {
-                State = GAME_PLAY;
+                GameMode = GameMode_Play;
 
                 if (LeftPaddle.Score == 3 || RightPaddle.Score == 3)
                 {
@@ -361,7 +365,7 @@ int main(int argc, char *argv[])
         SDL_RenderCopy(Renderer, Screen, NULL, NULL);
         SDL_RenderPresent(Renderer);
 
-        Pressed = PRESSED_UNDEFINED;
+        KeyboardPress = KeyboardPress_Undefined;
         ElapsedTime = (float)(SDL_GetTicks() - FrameStart);
 
         if(ElapsedTime < 6)
