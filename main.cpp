@@ -3,13 +3,15 @@
 
 #define SCREEN_WIDTH 540
 #define SCREEN_HEIGHT 480
-#define DISTANCE_FROM_WALL 50
+#define PADDLE_DISTANCE_FROM_WALL 50
 #define FALSE 0
 #define TRUE 1
-#define bool u32
+#define bool u8
 #define GREEN 0x21fb00
+#define global static
 
-typedef Uint32 u32;
+typedef uint32_t u32;
+typedef uint8_t u8;;
 
 enum keyboard_press {
     PRESSED_UNDEFINED,
@@ -24,9 +26,10 @@ enum game_state {
     GAME_OVER
 };
 
-game_state State;
+global game_state State;
 
-int ScoreNumbers[4][15] = {
+global int ScoreNumbers[4][15] =
+{
     {
         1, 1, 1,
         1, 0, 1,
@@ -77,9 +80,9 @@ struct ball {
     float Radius;
 };
 
-int SCREEN_VERTICAL_CENTER = SCREEN_HEIGHT/2;
-int SCREEN_HORIZONTAL_CENTER = SCREEN_WIDTH/2;
-position SCREEN_CENTER = { SCREEN_HORIZONTAL_CENTER, SCREEN_VERTICAL_CENTER };
+global int SCREEN_VERTICAL_CENTER = SCREEN_HEIGHT/2;
+global int SCREEN_HORIZONTAL_CENTER = SCREEN_WIDTH/2;
+global position SCREEN_CENTER = { SCREEN_HORIZONTAL_CENTER, SCREEN_VERTICAL_CENTER };
 
 float Lerp(float Start, float End, float Percent)
 {
@@ -205,11 +208,11 @@ paddle InitPaddle(bool IsLeftPaddle)
 
     if(IsLeftPaddle)
     {
-        Paddle.Position.X = DISTANCE_FROM_WALL;
+        Paddle.Position.X = PADDLE_DISTANCE_FROM_WALL;
     }
     else
     {
-        Paddle.Position.X = SCREEN_WIDTH - DISTANCE_FROM_WALL;
+        Paddle.Position.X = SCREEN_WIDTH - PADDLE_DISTANCE_FROM_WALL;
     }
 
     Paddle.Position.Y = SCREEN_VERTICAL_CENTER;
