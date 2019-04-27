@@ -93,10 +93,26 @@ float Lerp(float Start, float End, float Percent)
     return Start + (End-Start)*Percent;
 }
 
-void ResetPaddlePositions(paddle *LeftPaddle, paddle *RightPaddle)
+void SetGameToReadyState(paddle *LeftPaddle, paddle *RightPaddle, ball *Ball)
 {
+    Ball->Position = SCREEN_CENTER;
+    GameMode = GameMode_Ready;
     LeftPaddle->Position.Y = SCREEN_VERTICAL_CENTER;
     RightPaddle->Position.Y = SCREEN_VERTICAL_CENTER;
+}
+
+bool BallHitsLeftPaddle(paddle *LeftPaddle, ball *Ball)
+{
+    return (Ball->Position.X < (LeftPaddle->Position.X + LeftPaddle->Width/2)) &&
+        (Ball->Position.Y > (LeftPaddle->Position.Y - LeftPaddle->Height/2)) &&
+        (Ball->Position.Y < (LeftPaddle->Position.Y + LeftPaddle->Height/2));
+}
+
+bool BallHitsRightPaddle(paddle *RightPaddle, ball *Ball)
+{
+    return (Ball->Position.X > (RightPaddle->Position.X - RightPaddle->Width/2)) &&
+        (Ball->Position.Y > (RightPaddle->Position.Y - RightPaddle->Height/2)) &&
+        (Ball->Position.Y < (RightPaddle->Position.Y + RightPaddle->Height/2));
 }
 
 void UpdateBall(ball *Ball, paddle *LeftPaddle, paddle *RightPaddle, float ElapsedTime)
@@ -114,37 +130,21 @@ void UpdateBall(ball *Ball, paddle *LeftPaddle, paddle *RightPaddle, float Elaps
     if(Ball->Position.X < 0)
     {
         RightPaddle->Score++;
-        ResetPaddlePositions(LeftPaddle, RightPaddle);
-        Ball->Position = SCREEN_CENTER;
-        GameMode = GameMode_Ready;
+        SetGameToReadyState(LeftPaddle, RightPaddle, Ball);
         return;
     }
-    else if(Ball->Position.X > SCREEN_WIDTH)
+
+    if(Ball->Position.X > SCREEN_WIDTH)
     {
         LeftPaddle->Score++;
-        ResetPaddlePositions(LeftPaddle, RightPaddle);
-        Ball->Position = SCREEN_CENTER;
-        GameMode = GameMode_Ready;
+        SetGameToReadyState(LeftPaddle, RightPaddle, Ball);
         return;
     }
 
-    if(Ball->Position.X < (LeftPaddle->Position.X + LeftPaddle->Width/2))
+    if(BallHitsLeftPaddle(LeftPaddle, Ball) ||
+        BallHitsRightPaddle(RightPaddle, Ball))
     {
-        if((Ball->Position.Y > (LeftPaddle->Position.Y - LeftPaddle->Height/2)) &&
-           (Ball->Position.Y < (LeftPaddle->Position.Y + LeftPaddle->Height/2)))
-        {
-            Ball->VelocityX = -Ball->VelocityX;
-            return;
-        }
-    }
-
-    if(Ball->Position.X > (RightPaddle->Position.X - RightPaddle->Width/2))
-    {
-        if((Ball->Position.Y > (RightPaddle->Position.Y - RightPaddle->Height/2)) &&
-           (Ball->Position.Y < (RightPaddle->Position.Y + RightPaddle->Height/2)))
-        {
-            Ball->VelocityX = -Ball->VelocityX;
-        }
+        Ball->VelocityX = -Ball->VelocityX;
     }
 }
 
