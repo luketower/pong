@@ -141,10 +141,15 @@ void UpdateBall(ball *Ball, paddle *LeftPaddle, paddle *RightPaddle, float Elaps
         return;
     }
 
-    if(BallHitsLeftPaddle(LeftPaddle, Ball) ||
-        BallHitsRightPaddle(RightPaddle, Ball))
+    if(BallHitsLeftPaddle(LeftPaddle, Ball))
     {
         Ball->VelocityX = -Ball->VelocityX;
+        Ball->Position.X = LeftPaddle->Position.X + LeftPaddle->Width/2.0;
+    }
+    if(BallHitsRightPaddle(RightPaddle, Ball))
+    {
+        Ball->VelocityX = -Ball->VelocityX;
+        Ball->Position.X = RightPaddle->Position.X - RightPaddle->Width/2.0;
     }
 }
 
