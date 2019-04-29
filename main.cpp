@@ -172,6 +172,17 @@ void UpdateAiPaddle(paddle *Paddle, ball Ball)
     Paddle->Position.Y = Ball.Position.Y;
 }
 
+void SetPixel(int X, int Y, u32 *ScreenPixels)
+{
+    int Index = ((Y*SCREEN_WIDTH) + X);
+    int PixelLength = SCREEN_WIDTH*SCREEN_HEIGHT;
+
+    if(Index < PixelLength && Index > 0)
+    {
+        ScreenPixels[Index] = GREEN;
+    }
+}
+
 void DrawScore(position Position, int Size, int Num, u32 *ScreenPixels)
 {
     int StartX = Position.X - (Size*3)/2;
@@ -181,11 +192,11 @@ void DrawScore(position Position, int Size, int Num, u32 *ScreenPixels)
     {
         if(ScoreNumbers[Num][i] == 1)
         {
-            for(int y = StartY; y < StartY+Size; y++)
+            for(int Y = StartY; Y < StartY+Size; Y++)
             {
-                for(int x = StartX; x < StartX+Size; x++)
+                for(int X = StartX; X < StartX+Size; X++)
                 {
-                    ScreenPixels[(y)*SCREEN_WIDTH + x] = GREEN;
+                    SetPixel(X, Y, ScreenPixels);
                 }
             }
         }
@@ -244,7 +255,7 @@ void DrawPaddle(paddle Paddle, u32 *ScreenPixels)
     {
         for(int Col = 0; Col < Paddle.Width; Col++)
         {
-            ScreenPixels[(Row+StartY)*SCREEN_WIDTH + Col + StartX] = GREEN;
+            SetPixel((Col+StartX), (Row+StartY), ScreenPixels);
         }
     }
 
@@ -263,7 +274,9 @@ void DrawBall(ball Ball, u32 *ScreenPixels)
         {
             if(Row*Row+Col*Col < Ball.Radius)
             {
-                ScreenPixels[(int)(Row+Ball.Position.Y)*SCREEN_WIDTH + Col +(int)Ball.Position.X] = GREEN;
+                int PixelX = Col+(int)Ball.Position.X;
+                int PixelY = (int)Row+Ball.Position.Y;
+                SetPixel(PixelX, PixelY, ScreenPixels);
             }
         }
     }
