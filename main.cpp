@@ -104,6 +104,7 @@ void SetGameToReadyState(paddle *LeftPaddle, paddle *RightPaddle, ball *Ball)
 bool BallHitsLeftPaddle(paddle *LeftPaddle, ball *Ball)
 {
     return (Ball->Position.X < (LeftPaddle->Position.X + LeftPaddle->Width/2)) &&
+        (Ball->Position.X > (LeftPaddle->Position.X - LeftPaddle->Width/2)) &&
         (Ball->Position.Y > (LeftPaddle->Position.Y - LeftPaddle->Height/2)) &&
         (Ball->Position.Y < (LeftPaddle->Position.Y + LeftPaddle->Height/2));
 }
@@ -111,6 +112,7 @@ bool BallHitsLeftPaddle(paddle *LeftPaddle, ball *Ball)
 bool BallHitsRightPaddle(paddle *RightPaddle, ball *Ball)
 {
     return (Ball->Position.X > (RightPaddle->Position.X - RightPaddle->Width/2)) &&
+        (Ball->Position.X < (RightPaddle->Position.X + RightPaddle->Width/2)) &&
         (Ball->Position.Y > (RightPaddle->Position.Y - RightPaddle->Height/2)) &&
         (Ball->Position.Y < (RightPaddle->Position.Y + RightPaddle->Height/2));
 }
