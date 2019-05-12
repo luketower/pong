@@ -224,19 +224,11 @@ ball InitBall()
     return Ball;
 }
 
-paddle InitPaddle(bool IsLeftPaddle)
+paddle InitPaddle(float PaddleX)
 {
     paddle Paddle;
 
-    if(IsLeftPaddle)
-    {
-        Paddle.Position.X = PADDLE_DISTANCE_FROM_WALL;
-    }
-    else
-    {
-        Paddle.Position.X = SCREEN_WIDTH - PADDLE_DISTANCE_FROM_WALL;
-    }
-
+    Paddle.Position.X = PaddleX;
     Paddle.Position.Y = SCREEN_VERTICAL_CENTER;
     Paddle.Width = 5;
     Paddle.Height = 40;
@@ -315,11 +307,8 @@ int main(int argc, char *argv[])
 
     ball Ball = InitBall();
 
-    bool IsLeftPaddle = TRUE;
-    paddle LeftPaddle = InitPaddle(IsLeftPaddle);
-
-    IsLeftPaddle = FALSE;
-    paddle RightPaddle = InitPaddle(IsLeftPaddle);
+    paddle LeftPaddle = InitPaddle(PADDLE_DISTANCE_FROM_WALL);
+    paddle RightPaddle = InitPaddle(SCREEN_WIDTH - PADDLE_DISTANCE_FROM_WALL);
 
     u32 FrameStart;
     float ElapsedTime;
