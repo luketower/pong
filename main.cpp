@@ -1,9 +1,6 @@
 #include <SDL2/SDL.h>
 #include <stdio.h>
 
-#define SCREEN_WIDTH 540
-#define SCREEN_HEIGHT 480
-#define PADDLE_DISTANCE_FROM_WALL 50
 #define FALSE 0
 #define TRUE 1
 #define bool u8
@@ -12,6 +9,24 @@
 
 typedef uint32_t u32;
 typedef uint8_t u8;;
+
+struct position
+{
+    float X;
+    float Y;
+};
+
+struct game_window
+{
+    int Width;
+    int Height;
+    int PaddleDistanceFromWall;
+    float VerticalCenter;
+    float HorizontalCenter;
+    position ScreenCenter;
+};
+
+global game_window GameWindow;
 
 enum keyboard_press
 {
@@ -61,12 +76,6 @@ global int ScoreNumbers[4][15] =
     }
 };
 
-struct position
-{
-    float X;
-    float Y;
-};
-
 struct paddle
 {
     position Position;
@@ -84,10 +93,6 @@ struct ball
     float Radius;
 };
 
-global int SCREEN_VERTICAL_CENTER = SCREEN_HEIGHT/2;
-global int SCREEN_HORIZONTAL_CENTER = SCREEN_WIDTH/2;
-global position SCREEN_CENTER = { SCREEN_HORIZONTAL_CENTER, SCREEN_VERTICAL_CENTER };
-
 float Lerp(float Start, float End, float Percent)
 {
     return Start + (End-Start)*Percent;
@@ -95,10 +100,10 @@ float Lerp(float Start, float End, float Percent)
 
 void SetGameToReadyState(paddle *LeftPaddle, paddle *RightPaddle, ball *Ball)
 {
-    Ball->Position = SCREEN_CENTER;
+    Ball->Position = GameWindow.ScreenCenter;
     GameMode = GameMode_Ready;
-    LeftPaddle->Position.Y = SCREEN_VERTICAL_CENTER;
-    RightPaddle->Position.Y = SCREEN_VERTICAL_CENTER;
+    LeftPaddle->Position.Y = GameWindow.VerticalCenter;
+    RightPaddle->Position.Y = GameWindow.VerticalCenter;
 }
 
 bool BallHitsLeftPaddle(paddle *LeftPaddle, ball *Ball)
@@ -123,7 +128,7 @@ void UpdateBall(ball *Ball, paddle *LeftPaddle, paddle *RightPaddle, float Elaps
     Ball->Position.Y += Ball->VelocityY * (ElapsedTime/1000);
 
     if((Ball->Position.Y < 0) ||
-       (Ball->Position.Y > SCREEN_HEIGHT))
+       (Ball->Position.Y > GameWindow.Height))
     {
         Ball->VelocityY = -Ball->VelocityY;
         return;
@@ -136,7 +141,7 @@ void UpdateBall(ball *Ball, paddle *LeftPaddle, paddle *RightPaddle, float Elaps
         return;
     }
 
-    if(Ball->Position.X > SCREEN_WIDTH)
+    if(Ball->Position.X > GameWindow.Width)
     {
         LeftPaddle->Score++;
         SetGameToReadyState(LeftPaddle, RightPaddle, Ball);
@@ -163,7 +168,7 @@ void UpdatePaddle(paddle *Paddle, keyboard_press KeyboardPress, float ElapsedTim
     }
 
     if((KeyboardPress == KeyboardPress_Down) &&
-        ((Paddle->Position.Y + Paddle->Height/2) < SCREEN_HEIGHT))
+        ((Paddle->Position.Y + Paddle->Height/2) < GameWindow.Height))
     {
         Paddle->Position.Y += Paddle->Speed * (ElapsedTime/1000);
     }
@@ -176,8 +181,8 @@ void UpdateAiPaddle(paddle *Paddle, ball Ball)
 
 void SetPixel(int X, int Y, u32 *ScreenPixels)
 {
-    int Index = ((Y*SCREEN_WIDTH) + X);
-    int PixelLength = SCREEN_WIDTH*SCREEN_HEIGHT;
+    int Index = ((Y*GameWindow.Width) + X);
+    int PixelLength = GameWindow.Width*GameWindow.Height;
 
     if(Index < PixelLength && Index > 0)
     {
@@ -215,8 +220,8 @@ ball InitBall()
 {
     ball Ball;
 
-    Ball.Position.X = SCREEN_HORIZONTAL_CENTER;
-    Ball.Position.Y = SCREEN_VERTICAL_CENTER;
+    Ball.Position.X = GameWindow.HorizontalCenter;
+    Ball.Position.Y = GameWindow.VerticalCenter;
     Ball.VelocityX = 150;
     Ball.VelocityY = 150;
     Ball.Radius = 30;
@@ -229,7 +234,7 @@ paddle InitPaddle(float PaddleX)
     paddle Paddle;
 
     Paddle.Position.X = PaddleX;
-    Paddle.Position.Y = SCREEN_VERTICAL_CENTER;
+    Paddle.Position.Y = GameWindow.VerticalCenter;
     Paddle.Width = 5;
     Paddle.Height = 40;
     Paddle.Speed = 600;
@@ -253,7 +258,7 @@ void DrawPaddle(paddle Paddle, u32 *ScreenPixels)
         }
     }
 
-    int ScoreX = Lerp(Paddle.Position.X, SCREEN_CENTER.X, 0.2);
+    int ScoreX = Lerp(Paddle.Position.X, GameWindow.ScreenCenter.X, 0.2);
     position ScorePosition = { ScoreX, 35 };
     DrawScore(ScorePosition, 5, Paddle.Score, ScreenPixels);
 }
@@ -278,13 +283,22 @@ void DrawBall(ball Ball, u32 *ScreenPixels)
 
 int main(int argc, char *argv[])
 {
+    GameWindow.Width = 540;
+    GameWindow.Height = 480;
+    GameWindow.PaddleDistanceFromWall = 50;
+    GameWindow.VerticalCenter = GameWindow.Height/2;
+    GameWindow.HorizontalCenter = GameWindow.Width/2;
+    GameWindow.ScreenCenter.X = GameWindow.HorizontalCenter;
+    GameWindow.ScreenCenter.Y = GameWindow.VerticalCenter;
+
+
     SDL_Init(SDL_INIT_VIDEO);
 
     SDL_Window *Window = SDL_CreateWindow("Pong Song",
                               SDL_WINDOWPOS_UNDEFINED,
                               SDL_WINDOWPOS_UNDEFINED,
-                              SCREEN_WIDTH,
-                              SCREEN_HEIGHT,
+                              GameWindow.Width,
+                              GameWindow.Height,
                               SDL_WINDOW_SHOWN);
 
     SDL_assert(Window);
@@ -295,11 +309,11 @@ int main(int argc, char *argv[])
     SDL_Texture *Screen = SDL_CreateTexture(Renderer,
                                             SDL_PIXELFORMAT_RGB888,
                                             SDL_TEXTUREACCESS_STREAMING,
-                                            SCREEN_WIDTH,
-                                            SCREEN_HEIGHT);
+                                            GameWindow.Width,
+                                            GameWindow.Height);
     SDL_assert(Screen);
 
-    u32 *ScreenPixels = (u32*) calloc(SCREEN_WIDTH * SCREEN_HEIGHT, sizeof(u32));
+    u32 *ScreenPixels = (u32*) calloc(GameWindow.Width * GameWindow.Height, sizeof(u32));
     SDL_assert(ScreenPixels);
 
     bool Done = FALSE;
@@ -307,8 +321,8 @@ int main(int argc, char *argv[])
 
     ball Ball = InitBall();
 
-    paddle LeftPaddle = InitPaddle(PADDLE_DISTANCE_FROM_WALL);
-    paddle RightPaddle = InitPaddle(SCREEN_WIDTH - PADDLE_DISTANCE_FROM_WALL);
+    paddle LeftPaddle = InitPaddle(GameWindow.PaddleDistanceFromWall);
+    paddle RightPaddle = InitPaddle(GameWindow.Width - GameWindow.PaddleDistanceFromWall);
 
     u32 FrameStart;
     float ElapsedTime;
@@ -342,7 +356,6 @@ int main(int argc, char *argv[])
             }
         }
 
-
         if(GameMode == GameMode_Play)
         {
             UpdatePaddle(&LeftPaddle, KeyboardPress, ElapsedTime);
@@ -363,13 +376,13 @@ int main(int argc, char *argv[])
             }
         }
 
-        memset(ScreenPixels, 0, SCREEN_WIDTH * SCREEN_HEIGHT * sizeof(u32));
+        memset(ScreenPixels, 0, GameWindow.Width * GameWindow.Height * sizeof(u32));
 
         DrawPaddle(LeftPaddle, ScreenPixels);
         DrawPaddle(RightPaddle, ScreenPixels);
         DrawBall(Ball, ScreenPixels);
 
-        SDL_UpdateTexture(Screen, NULL, ScreenPixels, SCREEN_WIDTH * sizeof(u32));
+        SDL_UpdateTexture(Screen, NULL, ScreenPixels, GameWindow.Width * sizeof(u32));
         SDL_RenderClear(Renderer);
         SDL_RenderCopy(Renderer, Screen, NULL, NULL);
         SDL_RenderPresent(Renderer);
