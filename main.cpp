@@ -76,6 +76,16 @@ global int ScoreNumbers[4][15] =
     }
 };
 
+struct paddle_zone_velocity {
+    float OuterTop;
+    float InnerTop;
+    float Center;
+    float InnerBottom;
+    float OuterBottom;
+};
+
+global paddle_zone_velocity PaddleZoneVelocity;
+
 struct paddle
 {
     position Position;
@@ -98,9 +108,31 @@ float Lerp(float Start, float End, float Percent)
     return Start + (End-Start)*Percent;
 }
 
+void SetupGameWindow()
+{
+    GameWindow.Width = 540;
+    GameWindow.Height = 480;
+    GameWindow.PaddleDistanceFromWall = 50;
+    GameWindow.VerticalCenter = GameWindow.Height/2;
+    GameWindow.HorizontalCenter = GameWindow.Width/2;
+    GameWindow.ScreenCenter.X = GameWindow.HorizontalCenter;
+    GameWindow.ScreenCenter.Y = GameWindow.VerticalCenter;
+}
+
+void SetupPaddleZoneVelocity()
+{
+    PaddleZoneVelocity.OuterBottom = 300;
+    PaddleZoneVelocity.InnerBottom = 225;
+    PaddleZoneVelocity.Center = 0;
+    PaddleZoneVelocity.InnerTop = -PaddleZoneVelocity.InnerBottom;;
+    PaddleZoneVelocity.OuterTop = -PaddleZoneVelocity.OuterBottom;;
+
+}
+
 void SetGameToReadyState(paddle *LeftPaddle, paddle *RightPaddle, ball *Ball)
 {
     Ball->Position = GameWindow.ScreenCenter;
+    Ball->VelocityY = 0;
     GameMode = GameMode_Ready;
     LeftPaddle->Position.Y = GameWindow.VerticalCenter;
     RightPaddle->Position.Y = GameWindow.VerticalCenter;
@@ -120,6 +152,66 @@ bool BallHitsRightPaddle(paddle *RightPaddle, ball *Ball)
         (Ball->Position.X < (RightPaddle->Position.X + RightPaddle->Width/2)) &&
         (Ball->Position.Y > (RightPaddle->Position.Y - RightPaddle->Height/2)) &&
         (Ball->Position.Y < (RightPaddle->Position.Y + RightPaddle->Height/2));
+}
+
+float GetPaddleZoneVelocity(paddle *Paddle, ball *Ball)
+{
+    float Position = Ball->Position.Y;
+    float ZoneWidth = Paddle->Height/5;
+    float TopOfPaddle = Paddle->Position.Y - Paddle->Height/2;
+    float OuterTopZone = TopOfPaddle + ZoneWidth;
+    float InnerTopZone = TopOfPaddle + ZoneWidth*2;
+    float CenterZone = TopOfPaddle + ZoneWidth*3;
+    float InnerBottomZone = TopOfPaddle + ZoneWidth*4;
+    float OuterBottomZone = TopOfPaddle + ZoneWidth*5;
+
+    // Note: Order matters for now
+    if(Position <= OuterTopZone)
+    {
+        printf("OuterTop\n");
+        return PaddleZoneVelocity.OuterTop;
+    }
+
+    if(Position <= InnerTopZone)
+    {
+        printf("InnerTop\n");
+        return PaddleZoneVelocity.InnerTop;
+    }
+
+    if(Position <= CenterZone)
+    {
+        printf("Center\n");
+        return PaddleZoneVelocity.Center;
+    }
+
+    if(Position <= InnerBottomZone)
+    {
+        printf("InnerBottom\n");
+        return PaddleZoneVelocity.InnerBottom;
+    }
+
+    if(Position <= OuterBottomZone)
+    {
+        printf("OuterBottom\n");
+        return PaddleZoneVelocity.OuterBottom;
+    }
+
+    printf("Center\n");
+    return PaddleZoneVelocity.Center;
+}
+
+void updateBallVelocity(paddle *Paddle, ball *Ball)
+{
+    if(Paddle->Position.X == (GameWindow.PaddleDistanceFromWall))
+    {
+        Ball->VelocityX = -Ball->VelocityX;
+        // Calculate the PaddleZoneVelocity by determining in which PaddleZone
+        // the ball resides
+        Ball->VelocityY = GetPaddleZoneVelocity(Paddle, Ball);
+    } else
+    {
+        Ball->VelocityX = -Ball->VelocityX;
+    }
 }
 
 void UpdateBall(ball *Ball, paddle *LeftPaddle, paddle *RightPaddle, float ElapsedTime)
@@ -150,7 +242,7 @@ void UpdateBall(ball *Ball, paddle *LeftPaddle, paddle *RightPaddle, float Elaps
 
     if(BallHitsLeftPaddle(LeftPaddle, Ball))
     {
-        Ball->VelocityX = -Ball->VelocityX;
+        updateBallVelocity(LeftPaddle, Ball);
         Ball->Position.X = LeftPaddle->Position.X + LeftPaddle->Width/2.0;
     }
     if(BallHitsRightPaddle(RightPaddle, Ball))
@@ -283,14 +375,8 @@ void DrawBall(ball Ball, u32 *ScreenPixels)
 
 int main(int argc, char *argv[])
 {
-    GameWindow.Width = 540;
-    GameWindow.Height = 480;
-    GameWindow.PaddleDistanceFromWall = 50;
-    GameWindow.VerticalCenter = GameWindow.Height/2;
-    GameWindow.HorizontalCenter = GameWindow.Width/2;
-    GameWindow.ScreenCenter.X = GameWindow.HorizontalCenter;
-    GameWindow.ScreenCenter.Y = GameWindow.VerticalCenter;
-
+    SetupGameWindow();
+    SetupPaddleZoneVelocity();
 
     SDL_Init(SDL_INIT_VIDEO);
 
@@ -368,7 +454,7 @@ int main(int argc, char *argv[])
             {
                 GameMode = GameMode_Play;
 
-                if (LeftPaddle.Score == 3 || RightPaddle.Score == 3)
+                if(LeftPaddle.Score == 3 || RightPaddle.Score == 3)
                 {
                     LeftPaddle.Score = 0;
                     RightPaddle.Score = 0;
